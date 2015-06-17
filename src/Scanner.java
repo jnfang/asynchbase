@@ -114,6 +114,8 @@ public final class Scanner {
   private final HBaseClient client;
   private final byte[] table;
 
+  private boolean is_reversed= false;
+
   /**
    * The key to start scanning from.  An empty array means "start from the
    * first key in the table".  This key is updated each time we move on to
@@ -202,6 +204,16 @@ public final class Scanner {
     KeyValue.checkTable(table);
     this.client = client;
     this.table = table;
+  }
+
+  /**
+  * Specifies if the scan will be in reverse or not
+  * @param to_reverse Indication of scan direction. If this is not
+  * invoked, scanning will default to not being reversed
+  */
+  public void setReversed(boolean to_reverse){
+    checkScanningNotStarted();
+    this.is_reversed = to_reverse;
   }
 
   /**
@@ -1230,7 +1242,8 @@ public final class Scanner {
       }
       final Scan.Builder scan = Scan.newBuilder()
         .setStartRow(Bytes.wrap(start_key))
-        .setStopRow(Bytes.wrap(stop_key));
+        .setStopRow(Bytes.wrap(stop_key))
+        .setReversed(is_reversed);
       if (families != null) {
         for (int i = 0; i < families.length; i++) {
           final Column.Builder columns = Column.newBuilder();

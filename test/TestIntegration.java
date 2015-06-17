@@ -885,6 +885,42 @@ final public class TestIntegration {
     assertEq("v3", dependent_value_rows.get(0).get(0).value());
   }
 
+    /**
+            * Simple reverse scan using reverse get of HBase 0.98+
+            * @throws Exception
+    */
+    @Test
+    public void reverseFetch() throws Exception {
+        client.setFlushInterval(FAST_FLUSH);
+
+        // All puts below should be read in scan
+        final PutRequest put1 = new PutRequest(table, "rf1", family, "qa1", "v1");
+        final PutRequest put2 = new PutRequest(table, "rf1", family, "qb2", "v2");
+        final PutRequest put3 = new PutRequest(table, "rf2", family, "qc3", "v3");
+        final PutRequest put4 = new PutRequest(table, "rf2", family, "qd4", "v4");
+        final PutRequest put5 = new PutRequest(table, "rf3", family, "qd5", "v5");
+        final PutRequest put6 = new PutRequest(table, "rf3", family, "qd6", "v6");
+
+        Deferred.group(Deferred.group(client.put(put1), client.put(put2), client.put(put5)), Deferred.group(
+                client.put(put3), client.put(put4), client.put(put6))).join();
+        final Scanner rev_scanner = client.newScanner(table);
+        rev_scanner.setFamily(family);
+        rev_scanner.setStartKey("rf3");
+        rev_scanner.setStopKey("rf1");
+        rev_scanner.setReversed(true);
+
+        final ArrayList<ArrayList<KeyValue>> rev_rows = rev_scanner.nextRows().join();
+
+        assertSizeIs(2, rev_rows);
+        ArrayList<KeyValue> kvs = rev_rows.get(0); // KV from 'rf3'
+        assertSizeIs(2, kvs);
+        assertEq("v5", kvs.get(0).value());
+        kvs = rev_rows.get(1); // KV from 'rf2'
+        assertSizeIs(2, kvs);
+        assertEq("v3", kvs.get(0).value());
+
+    }
+
   /** Simple column filter list tests.  */
   @Test
   public void filterList() throws Exception {
