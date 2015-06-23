@@ -133,6 +133,7 @@ test_SOURCES := \
 	test/TestIncrementCoalescing.java	\
 	test/TestIntegration.java	\
 
+
 unittest_SRC := \
 	test/TestMETALookup.java	\
 	test/TestNSREs.java
@@ -204,7 +205,6 @@ cli:
 
 integration:
 	$(MAKE) run CLASS=TestIntegration
-
 
 # Little sed script to make a pretty-ish banner.
 BANNER := sed 's/^.*/  &  /;h;s/./=/g;p;x;p;x'

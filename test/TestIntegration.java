@@ -93,6 +93,7 @@ import org.hbase.async.ValueFilter;
 
 import org.hbase.async.test.Common;
 
+
 /**
  * Basic integration and regression tests for asynchbase.
  *
@@ -190,7 +191,7 @@ final public class TestIntegration {
   }
 
   /** Write a single thing to HBase and read it back. */
-  @Test
+  //@Test
   public void putRead() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final double write_time = System.currentTimeMillis();
@@ -209,7 +210,7 @@ final public class TestIntegration {
   }
 
   /** Write a single thing to HBase and read it back, delete it, read it. */
-  @Test
+  //@Test
   public void putReadDeleteRead() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final PutRequest put = new PutRequest(table, "k", family, "q", "val");
@@ -228,7 +229,7 @@ final public class TestIntegration {
    * Write two values to a HBase column and read them back,
    * delete one, and read back the other.
    */
-  @Test
+  //@Test
   public void putReadDeleteAtTimestamp() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     byte[] t = table.getBytes();
@@ -257,7 +258,7 @@ final public class TestIntegration {
   }
 
   /** Basic scan test. */
-  @Test
+  //@Test
   public void basicScan() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final PutRequest put1 = new PutRequest(table, "s1", family, "q", "v1");
@@ -304,7 +305,7 @@ final public class TestIntegration {
   }
 
   /** Scan with multiple qualifiers. */
-  @Test
+  //@Test
   public void scanWithQualifiers() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final PutRequest put1 = new PutRequest(table, "k", family, "a", "val1");
@@ -324,7 +325,7 @@ final public class TestIntegration {
   }
 
   /** Write a few KVs and delete them in one batch */
-  @Test
+  //@Test
   public void multiDelete() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final PutRequest put2 = new PutRequest(table, "mdk1", family, "q2", "val2");
@@ -347,7 +348,7 @@ final public class TestIntegration {
   }
 
   /** Write a few KVs in different regions and delete them in one batch */
-  @Test
+  //@Test
   public void multiRegionMultiDelete() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final String table1 = args[0] + "1";
@@ -377,7 +378,7 @@ final public class TestIntegration {
   }
 
   /** Attempt to write a column family that doesn't exist. */
-  @Test
+  //@Test
   public void putNonexistentFamily() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final PutRequest put = new PutRequest(table, "k", family + family,
@@ -392,7 +393,7 @@ final public class TestIntegration {
   }
 
   /** Send a bunch of edits with one that references a non-existent family. */
-  @Test
+  //@Test
   public void multiPutWithOneBadRpcInBatch() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final PutRequest put1 = new PutRequest(table, "mk1", family, "m1", "mpb1");
@@ -430,7 +431,7 @@ final public class TestIntegration {
   }
 
   /** Lots of buffered counter increments from multiple threads. */
-  @Test
+  //@Test
   public void bufferedIncrementStressTest() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final byte[] table = TestIntegration.table.getBytes();
@@ -503,7 +504,7 @@ final public class TestIntegration {
   }
 
   /** Increment coalescing with values too large to be coalesced. */
-  @Test
+  //@Test
   public void incrementCoalescingWithAmountsTooBig() throws Exception {
     client.setFlushInterval(SLOW_FLUSH);
     final byte[] table = TestIntegration.table.getBytes();
@@ -532,7 +533,7 @@ final public class TestIntegration {
   }
 
   /** Increment coalescing with large values that overflow. */
-  @Test
+  //@Test
   public void incrementCoalescingWithOverflowingAmounts() throws Exception {
     client.setFlushInterval(SLOW_FLUSH);
     final byte[] table = TestIntegration.table.getBytes();
@@ -560,7 +561,7 @@ final public class TestIntegration {
   }
 
   /** Increment coalescing with negative values and underflows. */
-  @Test
+  //@Test
   public void incrementCoalescingWithUnderflowingAmounts() throws Exception {
     client.setFlushInterval(SLOW_FLUSH);
     final byte[] table = TestIntegration.table.getBytes();
@@ -588,7 +589,7 @@ final public class TestIntegration {
   }
 
   /** Increment coalescing where the coalesced sum ends up being zero. */
-  @Test
+  //@Test
   public void incrementCoalescingWithZeroSumAmount() throws Exception {
     client.setFlushInterval(SLOW_FLUSH);
     final byte[] table = TestIntegration.table.getBytes();
@@ -637,7 +638,7 @@ final public class TestIntegration {
   }
 
   /** Test regexp-based row key filtering.  */
-  @Test
+  //@Test
   public void keyRegexpFilter() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final PutRequest put1 = new PutRequest(table, "krf accept:by the filter",
@@ -664,7 +665,7 @@ final public class TestIntegration {
   }
 
   /** Simple column prefix filter tests.  */
-  @Test
+  //@Test
   public void columnPrefixFilter() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     // Keep only rows with a column qualifier that starts with "qa".
@@ -691,7 +692,7 @@ final public class TestIntegration {
   }
 
   /** Simple column range filter tests.  */
-  @Test
+  //@Test
   public void columnRangeFilter() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     // Keep rows that have a qualifier in between "qb" (inclusive) and "qd4"
@@ -717,7 +718,7 @@ final public class TestIntegration {
     assertEq("v3", kvs.get(0).value());
   }
 
-  @Test
+  //@Test
   public void filterComparators() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final PutRequest put1 = new PutRequest(table, "fc1", family, "a", "v1");
@@ -787,7 +788,7 @@ final public class TestIntegration {
     assertEq("v2", substring_rows.get(0).get(0).value());
   }
 
-  @Test
+  //@Test
   public void compareFilters() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final PutRequest put1 = new PutRequest(table, "cf1", family, "a", "v1");
@@ -885,47 +886,8 @@ final public class TestIntegration {
     assertEq("v3", dependent_value_rows.get(0).get(0).value());
   }
 
-    /**
-     * Simple reverse scan using reverse get of HBase 0.98+.
-     * @throws Exception
-    */
-    @Test
-    public void reverseFetch() throws Exception {
-        client.setFlushInterval(FAST_FLUSH);
-
-        // All puts below should be read in scan
-        final PutRequest put1 = new PutRequest(table, "rf1", family, "qa1", "v1");
-        final PutRequest put2 = new PutRequest(table, "rf1", family, "qb2", "v2");
-        final PutRequest put3 = new PutRequest(table, "rf2", family, "qc3", "v3");
-        final PutRequest put4 = new PutRequest(table, "rf2", family, "qd4", "v4");
-        final PutRequest put5 = new PutRequest(table, "rf3", family, "qd5", "v5");
-        final PutRequest put6 = new PutRequest(table, "rf3", family, "qd6", "v6");
-
-        Deferred.group(Deferred.group(client.put(put1), client.put(put2), client.put(put5)), Deferred.group(
-                client.put(put3), client.put(put4), client.put(put6))).join();
-        final Scanner rev_scanner = client.newScanner(table);
-        rev_scanner.setFamily(family);
-        rev_scanner.setStartKey("rf3");  // StartKey is inclusive
-        rev_scanner.setStopKey("rf1");   // StopKey is exclusive
-        rev_scanner.setReverse();
-
-        final ArrayList<ArrayList<KeyValue>> rev_rows = rev_scanner.nextRows().join();
-
-        assertSizeIs(2, rev_rows);
-        ArrayList<KeyValue> kvs = rev_rows.get(0); // KV from 'rf3'
-        assertSizeIs(2, kvs);
-        assertEq("v5", kvs.get(0).value());
-        assertEq("v6", kvs.get(1).value());
-        kvs = rev_rows.get(1); // KV from 'rf2'
-        assertSizeIs(2, kvs);
-        assertEq("v3", kvs.get(0).value());
-        assertEq("v4", kvs.get(1).value());
-
-
-    }
-
   /** Simple column filter list tests.  */
-  @Test
+ // @Test
   public void filterList() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     // Keep rows that have both:
@@ -966,7 +928,7 @@ final public class TestIntegration {
   }
 
   /** Simple timestamps filter list tests.  */
-  @Test
+  //@Test
   public void timestampsFilter() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final byte[] tableBytes = Bytes.UTF8(table);
@@ -992,7 +954,7 @@ final public class TestIntegration {
     assertEq("v3", rows.get(1).get(0).value());
   }
 
-  @Test
+  //@Test
   public void prefetchMeta() throws Exception {
     // Prefetch the metadata for a given table, then invasively probe the
     // region cache to demonstrate it is filled.
@@ -1004,8 +966,189 @@ final public class TestIntegration {
     assertNotNull(region_info);
   }
 
-  /** Regression test for issue #2. */
+
+  /** Basic reverse scan test. Modeled after the basic forward scan. */
   @Test
+  public void basicReverseScan() throws Exception {
+    client.setFlushInterval(FAST_FLUSH);
+    final PutRequest put1 = new PutRequest(table, "brs1", family, "q", "v1");
+    final PutRequest put2 = new PutRequest(table, "brs2", family, "q", "v2");
+    final PutRequest put3 = new PutRequest(table, "brs3", family, "q", "v3");
+    Deferred.group(client.put(put1), client.put(put2),
+            client.put(put3)).join();
+    // Scan the same 3 rows created above twice.
+    for (int i = 0; i < 2; i++) {
+        LOG.info("------------ iteration #" + i);
+        final Scanner scanner = client.newScanner(table);
+        scanner.setStartKey("brs9");
+        scanner.setStopKey("brs0");
+        scanner.setReversed(true);
+        // Callback class to keep scanning recursively.
+        class cb implements Callback<Object, ArrayList<ArrayList<KeyValue>>> {
+            private int n = 4; // Asserts will start at the last added values
+            public Object call(final ArrayList<ArrayList<KeyValue>> rows) {
+                if (rows == null) {
+                    return null;
+                }
+                n--;
+                try {
+                    assertSizeIs(1, rows);
+                    final ArrayList<KeyValue> kvs = rows.get(0);
+                    final KeyValue kv = kvs.get(0);
+                    assertSizeIs(1, kvs);
+                    assertEq("brs" + n, kv.key());
+                    assertEq("q", kv.qualifier());
+                    assertEq("v" + n, kv.value());
+                    return scanner.nextRows(1).addCallback(this);
+                } catch (AssertionError e) {
+                    // Deferred doesn't catch Errors on purpose, so transform any
+                    // assertion failure into an Exception.
+                    throw new RuntimeException("Asynchronous failure", e);
+                }
+            }
+        }
+        try {
+            // Reversed scanner will return the largest key in the first nextRows call
+            scanner.nextRows(1).addCallback(new cb()).join();
+        } finally {
+            scanner.close().join();
+        }
+    }
+  }
+
+  /**
+   * Longer reverse scan, checks that qualifier and value are still in lexico order
+   */
+  @Test
+  public void reverseLongerScan() throws Exception {
+    client.setFlushInterval(FAST_FLUSH);
+
+    // All puts below should be read in scan
+    final PutRequest put1 = new PutRequest(table, "rl1", family, "q1", "v1");
+    final PutRequest put2 = new PutRequest(table, "rl1", family, "q2", "v2");
+    final PutRequest put3 = new PutRequest(table, "rl2", family, "q3", "v3");
+    final PutRequest put4 = new PutRequest(table, "rl2", family, "q4", "v4");
+    final PutRequest put5 = new PutRequest(table, "rl3", family, "q5", "v5");
+    final PutRequest put6 = new PutRequest(table, "rl3", family, "q6", "v6");
+
+    Deferred.group(Deferred.group(client.put(put1), client.put(put2),
+                  client.put(put3)),
+          Deferred.group(client.put(put4), client.put(put5),
+                  client.put(put6))).join();
+    final Scanner rev_scanner = client.newScanner(table);
+    rev_scanner.setFamily(family);
+    rev_scanner.setStartKey("rl9");   // Start key is inclusive
+    rev_scanner.setStopKey("rl0");    // Stop key is exclusive
+    rev_scanner.setReversed(true);
+
+    final ArrayList<ArrayList<KeyValue>> rev_rows = rev_scanner.nextRows().join();
+
+    assertSizeIs(3, rev_rows);
+
+    ArrayList<KeyValue> kvs = rev_rows.get(0); // KV from 'rl3'
+    assertSizeIs(2, kvs);
+    assertEq("v5", kvs.get(0).value());
+    assertEq("v6", kvs.get(0).value());
+
+    kvs = rev_rows.get(1); // KV from 'rfl', qualifer and value will still be in lexico order
+    assertSizeIs(2, kvs);
+    assertEq("v3", kvs.get(0).value());
+    assertEq("v4", kvs.get(0).value());
+    rev_scanner.close().join();
+  }
+
+    /**
+     * Compares simple forward scan with reverse scan
+     */
+  @Test
+  public void reverseForwardComparison() throws Exception {
+    client.setFlushInterval(FAST_FLUSH);
+
+    // All puts below should be read in scan
+    final PutRequest put1 = new PutRequest(table, "rfc1", family, "q1", "v1");
+    final PutRequest put2 = new PutRequest(table, "rfc2", family, "q2", "v2");
+    final PutRequest put3 = new PutRequest(table, "rfc3", family, "q3", "v3");
+
+    Deferred.group(client.put(put1), client.put(put2), client.put(put3)).join();
+
+    final Scanner rev_scanner = client.newScanner(table);
+    rev_scanner.setFamily(family);
+    rev_scanner.setStartKey("rfc9");
+    rev_scanner.setStopKey("rfc0");
+    rev_scanner.setReversed(true);
+    final ArrayList<ArrayList<KeyValue>> rev_rows = rev_scanner.nextRows().join();
+    assertSizeIs(3, rev_rows);
+
+    final Scanner forward_scanner = client.newScanner(table);
+    forward_scanner.setFamily(family);
+    forward_scanner.setStartKey("rfc0");
+    forward_scanner.setStopKey("rfc9");
+    final ArrayList<ArrayList<KeyValue>> forward_rows = forward_scanner.nextRows().join();
+    assertSizeIs(3, forward_rows);
+
+    ArrayList<KeyValue> rev_row;
+    ArrayList<KeyValue> forward_row;
+
+    // Compares results from forward and reverse scans to verify they are the same
+    for (int i=3; i> 0; i--){
+      rev_row = rev_rows.get(3-i);
+      forward_row = forward_rows.get(i-1);
+
+      assertEq("v"+i, rev_row.get(0).value());
+      assertEq("v"+i , forward_row.get(0).value());
+    }
+    rev_scanner.close().join();
+    forward_scanner.close().join();
+  }
+
+  /**
+   * Reverse scans on two tables with same data
+   */
+  @Test
+  public void reverseMultipleTableScan() throws Exception{
+    client.setFlushInterval(FAST_FLUSH);
+    final String table1 = args[0] + "1";
+    final String table2 = args[0] + "2";
+    createOrTruncateTable(client, table1, family);
+    createOrTruncateTable(client, table2, family);
+    final PutRequest put2 = new PutRequest(table1, "rmt1", family, "q2", "val0");
+    client.put(put2).join();
+    final PutRequest put4 = new PutRequest(table2, "rmt2", family, "q1", "val1");
+    client.put(put4).join();
+    final PutRequest put3 = new PutRequest(table1, "rmt2", family, "q3", "val1");
+    client.put(put3).join();
+    final PutRequest put1 = new PutRequest(table2, "rmt1", family, "q4", "val0");
+    client.put(put1).join();
+
+    final Scanner rev_scanner_1 = client.newScanner(table1);
+    rev_scanner_1.setReversed(true);
+    rev_scanner_1.setStartKey("rmt3");
+    rev_scanner_1.setStopKey("rmt0");
+
+    final Scanner rev_scanner_2 = client.newScanner(table2);
+    rev_scanner_2.setReversed(true);
+    rev_scanner_2.setStartKey("rmt3");
+    rev_scanner_2.setStopKey("rmt0");
+
+    final ArrayList<ArrayList<KeyValue>> table_1_rows = rev_scanner_1.nextRows().join();
+    final ArrayList<ArrayList<KeyValue>> table_2_rows = rev_scanner_2.nextRows().join();
+
+    assertSizeIs(2, table_1_rows);
+    assertSizeIs(2,table_2_rows);
+
+    // Compares data from both scans, should be the same
+    for (int i=0; i<2; i++){
+      assertEq("val"+i, table_1_rows.get(1-i).get(0).value());
+      assertEq("val"+i, table_2_rows.get(1-i).get(0).value());
+    }
+
+    rev_scanner_1.close().join();
+    rev_scanner_2.close().join();
+
+  }
+
+  /** Regression test for issue #2. */
+  //@Test
   public void regression2() throws Exception {
     try {
       final PutRequest put1 = new PutRequest(table, "k1", family, "q", "val1");
@@ -1026,7 +1169,7 @@ final public class TestIntegration {
   }
 
   /** Regression test for issue #25. */
-  @Test
+  //@Test
   public void regression25() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final String table1 = args[0] + "1";
@@ -1050,7 +1193,7 @@ final public class TestIntegration {
   }
 
   /** Regression test for issue #40 (which was actually Netty bug #474). */
-  @Test
+  //@Test
   public void regression40() throws Exception {
     // Cause a META lookup first to avoid some DEBUG-level spam due to the
     // long key below.
@@ -1078,7 +1221,7 @@ final public class TestIntegration {
   }
 
   /** Regression test for issue #41. */
-  @Test
+  //@Test
   public void regression41() throws Exception {
     client.setFlushInterval(SLOW_FLUSH);
     final byte[] table = TestIntegration.table.getBytes();
