@@ -880,13 +880,19 @@ public final class Scanner {
 
   private Deferred<ArrayList<ArrayList<KeyValue>>> scanFinished(final Response resp) {
     final byte[] region_stop_key = region.stopKey();
+    final byte[] region_start_key = region.startKey();
     // Check to see if this region is the last we should scan (either
     // because (1) it's the last region or (3) because its stop_key is
     // greater than or equal to the stop_key of this scanner provided
     // that (2) we're not trying to scan until the end of the table).
-    if (region_stop_key == EMPTY_ARRAY                           // (1)
-        || (stop_key != EMPTY_ARRAY                              // (2)
-            && Bytes.memcmp(stop_key, region_stop_key) <= 0)) {  // (3)
+    // or if the scanner is reversed, (4) it's the first region or
+    // (5) scanner is in reverse and stop_key is after the region start_key
+    if (region_stop_key == EMPTY_ARRAY && !is_reversed                        // (1)
+        || (stop_key != EMPTY_ARRAY                                           // (2)
+            && Bytes.memcmp(stop_key, region_stop_key) <= 0 && !is_reversed)  // (3)
+        || region_start_key == EMPTY_ARRAY && is_reversed                     // (4)
+        || (stop_key != EMPTY_ARRAY
+            && Bytes.memcmp(stop_key, region_start_key) >=0 && is_reversed)){ // (5)
       get_next_rows_request = null;        // free();
       families = null;                     // free();
       qualifiers = null;                   // free();
@@ -938,8 +944,15 @@ public final class Scanner {
         return "scanner moved";
       }
     });
-    // Continue scanning from the next region's start key.
-    start_key = region.stopKey();
+    // Continue scanning from the next region's start key
+    // Dependent on direction of scan
+    if (is_reversed){
+      start_key = region.stopKey();
+    }
+    else{
+      start_key = region.startKey();
+    }
+
     scanner_id = 0xDEAD000AA000DEADL;   // Make debugging easier.
     invalidate();
     return nextRows();
