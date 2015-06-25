@@ -1213,6 +1213,7 @@ public final class Scanner {
       size += start_key.length;  // The start key.
       size += 3;  // vint: stop key length (3 bytes => max length = 32768).
       size += stop_key.length;  // The stop key.
+      size += 1;  // bool: Whether the scanner is in reverse
       size += 4;  // int:  Max number of versions to return.
       size += 4;  // int:  Max number of KeyValues to get per RPC.
       size += 4;  // int:  Unused field only used by HBase's client.
