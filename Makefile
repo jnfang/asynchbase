@@ -229,7 +229,7 @@ check: $(top_builddir)/.javac-test-stamp $(UNITTESTS)
 
 pkg_version = \
   `git rev-list --pretty=format:%h HEAD --max-count=1 | sed 1d || echo unknown`
-$(top_builddir)/manifest: $(top_builddir)/.javac-stamp
+$(top_builddir)/manifest: $(top_builddir)/.javac-stamp .git/HEAD
 	{ echo "Specification-Title: $(spec_title)"; \
           echo "Specification-Version: $(spec_version)"; \
           echo "Specification-Vendor: $(spec_vendor)"; \

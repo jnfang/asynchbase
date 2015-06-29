@@ -700,7 +700,6 @@ public final class Scanner {
    * no more rows to scan.  Otherwise its {@link ArrayList#size size} is
    * guaranteed to be less than or equal to the value last given to
    * {@link #setMaxNumRows}.
-   * {@link #setMaxNumRows}.
    * @see #setMaxNumRows
    * @see #setMaxNumKeyValues
    */
