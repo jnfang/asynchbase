@@ -704,6 +704,8 @@ public final class Scanner {
    * @see #setMaxNumKeyValues
    */
   public Deferred<ArrayList<ArrayList<KeyValue>>> nextRows() {
+    System.out.println("At nextRows: region is DONE is " + (region == DONE) + "region is null is "
+      +  (region == null));
     if (region == DONE) {  // We're already done scanning.
       return Deferred.fromResult(null);
     } else if (region == null) {  // We need to open the scanner first.
@@ -725,6 +727,8 @@ public final class Scanner {
             if (LOG.isDebugEnabled()) {
               LOG.debug("Scanner " + Bytes.hex(scanner_id) + " opened on " + region);
             }
+            System.out.println("------------------------------- nextRows resp is not null is " + (resp != null) 
+              + " resp.rows is null is " + (resp.rows == null) + " because it is " + Deferred.fromResult(resp.rows).toString());
             if (resp != null) {
               if (resp.rows == null) {
                 return scanFinished(resp);
@@ -887,12 +891,29 @@ public final class Scanner {
     // that (2) we're not trying to scan until the end of the table).
     // or if the scanner is reversed, (4) it's the first region or
     // (5) scanner is in reverse and stop_key is after the region start_key
-    if (region_stop_key == EMPTY_ARRAY && !is_reversed                        // (1)
+    
+    //LOG.info("Scanner is set to " + Bytes.pretty(stop_key) + " and region has start key: "
+                //+ Bytes.pretty(start_key) + "region has stop key: " + Bytes.pretty(stop_key) + " and it is in reverse: " + is_reversed);
+    
+    /*if (region_stop_key == EMPTY_ARRAY && !is_reversed                        // (1)
         || (stop_key != EMPTY_ARRAY                                           // (2)
             && Bytes.memcmp(stop_key, region_stop_key) <= 0 && !is_reversed)  // (3)
         || region_start_key == EMPTY_ARRAY && is_reversed                     // (4)
         || (stop_key != EMPTY_ARRAY
             && Bytes.memcmp(stop_key, region_start_key) >=0 && is_reversed)){ // (5)
+      */
+    System.out.println("SCANFINISHED:" + " is reversed " + 
+      is_reversed + "; region stop key: " + Bytes.pretty(region_stop_key) + "; stop key: " + Bytes.pretty(stop_key));
+    if ((!is_reversed && 
+        (region_stop_key == EMPTY_ARRAY || 
+        (stop_key != EMPTY_ARRAY && Bytes.memcmp(stop_key, region_stop_key) <= 0 ))) 
+      || (is_reversed && 
+        (region_start_key == EMPTY_ARRAY ||
+        (stop_key != EMPTY_ARRAY && Bytes.memcmp(stop_key, region_start_key) >=0)))){
+      /*if (region_stop_key == EMPTY_ARRAY                           // (1)
+        || (stop_key != EMPTY_ARRAY                              // (2)
+            && Bytes.memcmp(stop_key, region_stop_key) <= 0)) {  // (3)*/
+      System.out.println("SCANNER CLOSING");
       get_next_rows_request = null;        // free();
       families = null;                     // free();
       qualifiers = null;                   // free();
@@ -910,6 +931,7 @@ public final class Scanner {
           }
         });
     }
+    System.out.println("Going to continueScanOnNextRegion");
     return continueScanOnNextRegion();
   }
 
@@ -947,14 +969,15 @@ public final class Scanner {
     // Continue scanning from the next region's start key
     // Dependent on direction of scan
     if (is_reversed){
-      start_key = region.stopKey();
+      start_key = region.startKey();
     }
     else{
-      start_key = region.startKey();
+      start_key = region.stopKey();
     }
 
     scanner_id = 0xDEAD000AA000DEADL;   // Make debugging easier.
     invalidate();
+    System.out.println("Going to nextRows");
     return nextRows();
   }
 

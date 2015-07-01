@@ -92,8 +92,6 @@ import org.hbase.async.TableNotFoundException;
 import org.hbase.async.TimestampsFilter;
 import org.hbase.async.ValueFilter;
 
-import org.apache.hadoop.hbase.util.RegionSplitter;
-
 import org.hbase.async.test.Common;
 
 /**
@@ -1149,18 +1147,39 @@ final public class TestIntegration {
 
   @Test
   // verify that there is two regions, after split
-  public void reverseAcrossRegions() throws Exception {
+  // change Scanner back to logger factory and delete import
+  public void scanAcrossRegions() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final String table1 = args[0] + "1";
-    final PutRequest put1 = new PutRequest(table1, "rmt1", family, "q1", "val0");
+    createOrTruncateTable(client, table1, family);
+    final String col = "q1";
+    final PutRequest put1 = new PutRequest(table1, "sar1", family, "q1", "val0");
     client.put(put1).join();
-    final PutRequest put2 = new PutRequest(table1, "rmt2", family, "q2", "val1");
+    final PutRequest put2 = new PutRequest(table1, "sar2", family, "q1", "val1");
     client.put(put2).join();
+    final PutRequest put3 = new PutRequest(table1, "sar3", family, "q1", "val2");
+    client.put(put3).join();
+    final PutRequest put4 = new PutRequest(table1, "sar4", family, "q1", "val3");
+    client.put(put4).join();
 
-    byte[] start_key = "rmt1".getBytes();
-    byte[] end_key = "rmt2".getBytes();
-    byte[] rs = new RegionSplitter.UniformSplit().split(start_key, end_key);
-    LOG.info("this is rs " + rs);
+    splitTable(table1, "sar4");
+    alterTableStatus(table1); 
+    
+    final Scanner scanner = client.newScanner(table1);
+    scanner.setStartKey("sar0".getBytes());
+    scanner.setStopKey("sar5".getBytes());
+    scanner.setMaxNumKeyValues(200);
+
+    ArrayList<ArrayList<KeyValue>> row = scanner.nextRows().join();
+    assertSizeIs(3, row);
+    assertEq("val0", row.get(0).get(0).value());
+    assertEq("val1", row.get(1).get(0).value());
+    assertEq("val2", row.get(2).get(0).value());
+
+
+    row = scanner.nextRows().join();
+    assertSizeIs(1, row);
+    assertEq("val3", row.get(0).get(0).value());
   }
 
   /** Regression test for issue #2. */
@@ -1277,6 +1296,16 @@ final public class TestIntegration {
     LOG.info("Creating table " + table + " with family " + family);
     hbaseShell("create '" + table + "',"
                + " {NAME => '" + family + "', VERSIONS => 2}");
+  }
+
+  private static void splitTable(final String table, final String key) throws Exception {
+    LOG.info("Splitting table " + table + " with key " + key);
+    hbaseShell("split '" + table +"', " + "'" + key + "'");
+  }
+
+  private static void alterTableStatus(final String table) throws Exception {
+    LOG.info("Altering table status " + table);
+    hbaseShell("alter_status '" + table + "'");
   }
 
   private static void truncateTable(final String table) throws Exception {
