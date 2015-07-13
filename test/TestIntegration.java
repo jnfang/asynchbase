@@ -981,7 +981,7 @@ final public class TestIntegration {
         final Scanner scanner = client.newScanner(table);
         scanner.setStartKey("brs9");
         scanner.setStopKey("brs0");
-        scanner.setReversed(true);
+        scanner.setReverse();
         // Callback class to keep scanning recursively.
         class cb implements Callback<Object, ArrayList<ArrayList<KeyValue>>> {
             private int n = 4; // Asserts will start at the last added values
@@ -1017,7 +1017,7 @@ final public class TestIntegration {
 
   /** Longer reverse scan, checks that qualifier and value are still in lexico order. */
   @Test
-  public void reverseLongerScan() throws Exception {
+  public void reverseRowsOnlyScan() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
 
     // All puts below should be read in scan
@@ -1033,10 +1033,9 @@ final public class TestIntegration {
           Deferred.group(client.put(put4), client.put(put5),
                   client.put(put6))).join();
     final Scanner rev_scanner = client.newScanner(table);
-    rev_scanner.setFamily(family);
     rev_scanner.setStartKey("rl9");   // Start key is inclusive
     rev_scanner.setStopKey("rl0");    // Stop key is exclusive
-    rev_scanner.setReversed(true);
+    rev_scanner.setReverse();
 
     final ArrayList<ArrayList<KeyValue>> rev_rows = rev_scanner.nextRows().join();
 
@@ -1045,12 +1044,17 @@ final public class TestIntegration {
     ArrayList<KeyValue> kvs = rev_rows.get(0); // KV from 'rl3'
     assertSizeIs(2, kvs);
     assertEq("v5", kvs.get(0).value());
-    assertEq("v6", kvs.get(0).value());
+    assertEq("v6", kvs.get(1).value());
 
     kvs = rev_rows.get(1); // KV from 'rl2', qualifer and value will still be in lexico order
     assertSizeIs(2, kvs);
     assertEq("v3", kvs.get(0).value());
-    assertEq("v4", kvs.get(0).value());
+    assertEq("v4", kvs.get(1).value());
+
+    kvs = rev_rows.get(2);
+    assertSizeIs(2, kvs);
+    assertEq("v1", kvs.get(0).value());
+    assertEq("v2", kvs.get(1).value());
     rev_scanner.close().join();
   }
 
@@ -1070,7 +1074,7 @@ final public class TestIntegration {
     rev_scanner.setFamily(family);
     rev_scanner.setStartKey("rfc9");
     rev_scanner.setStopKey("rfc0");
-    rev_scanner.setReversed(true);
+    rev_scanner.setReverse();
     final ArrayList<ArrayList<KeyValue>> rev_rows = rev_scanner.nextRows().join();
     assertSizeIs(3, rev_rows);
 
@@ -1114,12 +1118,12 @@ final public class TestIntegration {
     client.put(put1).join();
 
     final Scanner rev_scanner_1 = client.newScanner(table1);
-    rev_scanner_1.setReversed(true);
+    rev_scanner_1.setReverse();
     rev_scanner_1.setStartKey("rmt3");
     rev_scanner_1.setStopKey("rmt0");
 
     final Scanner rev_scanner_2 = client.newScanner(table2);
-    rev_scanner_2.setReversed(true);
+    rev_scanner_2.setReverse();
     rev_scanner_2.setStartKey("rmt3");
     rev_scanner_2.setStopKey("rmt0");
 
