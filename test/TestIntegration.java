@@ -968,7 +968,7 @@ final public class TestIntegration {
 
   /** Basic reverse scan test. Modeled after the basic forward scan. */
   @Test
-  public void basicReverseScan() throws Exception {
+  public void basicReverseScanTwiceOnAllValues() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
     final PutRequest put1 = new PutRequest(table, "brs1", family, "q", "v1");
     final PutRequest put2 = new PutRequest(table, "brs2", family, "q", "v2");
@@ -1017,7 +1017,7 @@ final public class TestIntegration {
 
   /** Longer reverse scan, checks that qualifier and value are still in lexico order. */
   @Test
-  public void reverseRowsOnlyScan() throws Exception {
+  public void reverseScanRowsNotColumns() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
 
     // All puts below should be read in scan
@@ -1060,7 +1060,7 @@ final public class TestIntegration {
 
     /** Compares simple forward scan with reverse scan.  */
   @Test
-  public void reverseForwardComparison() throws Exception {
+  public void reverseScanForwardScanComparison() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
 
     // All puts below should be read in scan
