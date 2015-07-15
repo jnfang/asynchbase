@@ -95,7 +95,9 @@ final class RegionInfo implements Comparable<RegionInfo> {
   }
 
   /** Returns the start key (inclusive) of this region.  */
-  public byte[] startKey(){ return start_key;}
+  public byte[] startKey(){ 
+    return start_key;
+  }
 
   /**
    * Returns the protobuf representation of this region.

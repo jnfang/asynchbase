@@ -1059,7 +1059,7 @@ final public class TestIntegration {
     rev_scanner.close().join();
   }
 
-    /** Compares simple forward scan with reverse scan.  */
+  /** Compares simple forward scan with reverse scan.  */
   @Test
   public void reverseScanForwardScanComparison() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
@@ -1145,30 +1145,26 @@ final public class TestIntegration {
 
   }
 
+  /** Forward scan across two regions */
   @Test
-  // verify that there is two regions, after split
-  // change Scanner back to logger factory and delete import
-  public void scanAcrossRegions() throws Exception {
+  public void forwardScanAcrossTwoUnevenRegions() throws Exception {
     client.setFlushInterval(FAST_FLUSH);
-    final String table1 = args[0] + "1";
-    createOrTruncateTable(client, table1, family);
-    final String col = "q1";
-    final PutRequest put1 = new PutRequest(table1, "sar1", family, "q1", "val0");
+    final PutRequest put1 = new PutRequest(table, "sar1", family, "q1", "val0");
     client.put(put1).join();
-    final PutRequest put2 = new PutRequest(table1, "sar2", family, "q1", "val1");
+    final PutRequest put2 = new PutRequest(table, "sar2", family, "q2", "val1");
     client.put(put2).join();
-    final PutRequest put3 = new PutRequest(table1, "sar3", family, "q1", "val2");
+    final PutRequest put3 = new PutRequest(table, "sar3", family, "q3", "val2");
     client.put(put3).join();
-    final PutRequest put4 = new PutRequest(table1, "sar4", family, "q1", "val3");
+    final PutRequest put4 = new PutRequest(table, "sar4", family, "q4", "val3");
     client.put(put4).join();
 
-    splitTable(table1, "sar4");
-    alterTableStatus(table1); 
+    // In Hbase shell, splits the table into two regions and sees update in stdout
+    splitTable(table, "sar4");
+    alterTableStatus(table); 
     
-    final Scanner scanner = client.newScanner(table1);
+    final Scanner scanner = client.newScanner(table);
     scanner.setStartKey("sar0".getBytes());
     scanner.setStopKey("sar5".getBytes());
-    scanner.setMaxNumKeyValues(200);
 
     ArrayList<ArrayList<KeyValue>> row = scanner.nextRows().join();
     assertSizeIs(3, row);
@@ -1176,10 +1172,262 @@ final public class TestIntegration {
     assertEq("val1", row.get(1).get(0).value());
     assertEq("val2", row.get(2).get(0).value());
 
-
     row = scanner.nextRows().join();
     assertSizeIs(1, row);
     assertEq("val3", row.get(0).get(0).value());
+    scanner.close().join();
+  }
+
+  /** Reverse scan across two regions. */
+  @Test
+  public void reverseScanSomeValuesAcrossTwoRegions() throws Exception{
+    client.setFlushInterval(FAST_FLUSH);
+    final PutRequest put1 = new PutRequest(table, "rsar1", family, "q1", "val0");
+    client.put(put1).join();
+    final PutRequest put2 = new PutRequest(table, "rsar2", family, "q2", "val1");
+    client.put(put2).join();
+    final PutRequest put3 = new PutRequest(table, "rsar3", family, "q3", "val2");
+    client.put(put3).join();
+    final PutRequest put4 = new PutRequest(table, "rsar4", family, "q4", "val3");
+    client.put(put4).join();
+
+    // In Hbase shell, splits the table into two regions and sees update in stdout
+    splitTable(table, "rsar3");
+    alterTableStatus(table);
+
+    final Scanner rev_scanner = client.newScanner(table);
+    rev_scanner.setStartKey("rsar3".getBytes());
+    rev_scanner.setStopKey("rsar0".getBytes());
+    rev_scanner.setReverse();
+
+    ArrayList<ArrayList<KeyValue>> row = rev_scanner.nextRows().join();
+    assertSizeIs(1, row);
+    assertEq("val2", row.get(0).get(0).value());
+
+    row = rev_scanner.nextRows().join();
+    assertSizeIs(2, row);
+    assertEq("val1", row.get(0).get(0).value());
+    assertEq("val0", row.get(1).get(0).value());
+    rev_scanner.close().join();
+  }
+
+  /** Reverse scan across three regions. */
+  @Test
+  public void reverseScanAllValuesAcrossThreeRegions() throws Exception{
+    client.setFlushInterval(FAST_FLUSH);
+    final PutRequest put1 = new PutRequest(table, "rw1", family, "q1", "val0");
+    client.put(put1).join();
+    final PutRequest put2 = new PutRequest(table, "rw2", family, "q2", "val1");
+    client.put(put2).join();
+    final PutRequest put3 = new PutRequest(table, "rw3", family, "q3", "val2");
+    client.put(put3).join();
+    final PutRequest put4 = new PutRequest(table, "rw4", family, "q4", "val3");
+    client.put(put4).join();
+
+    // In Hbase shell, splits the table into two regions and sees update in stdout
+    splitTable(table, "rw2");
+    alterTableStatus(table);
+
+    // In Hbase shell, splits the table into two regions and sees update in stdout
+    splitTable(table, "rw4");
+    alterTableStatus(table);
+
+    final Scanner rev_scanner = client.newScanner(table);
+    rev_scanner.setStartKey("rw4".getBytes());
+    rev_scanner.setStopKey("rw0".getBytes());
+    rev_scanner.setReverse();
+
+    ArrayList<ArrayList<KeyValue>> row = rev_scanner.nextRows().join();
+    assertSizeIs(1, row);
+    assertEq("val3", row.get(0).get(0).value());
+
+    row = rev_scanner.nextRows().join();
+    assertSizeIs(2, row);
+    assertEq("val2", row.get(0).get(0).value());
+    assertEq("val1", row.get(1).get(0).value());
+
+    row = rev_scanner.nextRows().join();
+    assertSizeIs(1, row);
+    assertEq("val0", row.get(0).get(0).value());
+    rev_scanner.close().join();
+  }
+
+  /**
+   * Reverse scan then forward scan over same rows and confirm results 
+   * are the same but in opposite order. */
+  @Test
+  public void alternatingReverseScanForwardScanOverSameValues() throws Exception{
+    client.setFlushInterval(FAST_FLUSH);
+    final String[] row_keys = {"rwop0", "rwop1", "rwop2", "rwop3", "rwop4", "rwop5", "rwop6"};
+    final int num_keys = row_keys.length;
+    final PutRequest put1 = new PutRequest(table, row_keys[0], family, "q1", "val0");
+    client.put(put1).join();
+    final PutRequest put2 = new PutRequest(table, row_keys[1], family, "q2", "val1");
+    client.put(put2).join();
+    final PutRequest put3 = new PutRequest(table, row_keys[2], family, "q3", "val2");
+    client.put(put3).join();
+    final PutRequest put4 = new PutRequest(table, row_keys[3], family, "q4", "val3");
+    client.put(put4).join();
+    final PutRequest put5 = new PutRequest(table, row_keys[4], family, "q2", "val4");
+    client.put(put5).join();
+    final PutRequest put6 = new PutRequest(table, row_keys[5], family, "q3", "val5");
+    client.put(put6).join();
+    final PutRequest put7 = new PutRequest(table, row_keys[6], family, "q4", "val6");
+    client.put(put7).join();
+
+    // Split table into 3 regions
+    splitTable(table, row_keys[2]);
+    splitTable(table, row_keys[4]);
+    splitTable(table, row_keys[5]);
+    alterTableStatus(table);
+
+    for (int i = 0; i < num_keys; i++){
+      for (int j = i+1; j < num_keys; j++){
+        ArrayList<ArrayList<KeyValue>> rev_result = genericScanGetAllAcrossRegions(
+          row_keys[j], row_keys[i], table, true);
+        assertSizeIs(j-i, rev_result);
+        int num_result = rev_result.size();
+        ArrayList<ArrayList<KeyValue>> forw_result = genericScanGetAllAcrossRegions(
+          row_keys[i], row_keys[j], table, false);
+        assertSizeIs(j-i, forw_result);
+        for (int k = 0; k < num_result; k++){
+          assertEq("val"+(j-k), rev_result.get(k).get(0).value());
+          assertEq("val"+(i+k), forw_result.get(k).get(0).value());
+        }
+      }
+    }
+  
+  }
+
+  /** 
+   * Corner case test that when start and stop key are the same, forward scan 
+   * returns one row while reverse scan returns 0 rows.
+   */
+  @Test
+  public void scanComparisonWithSameStartStopKeys() throws Exception{
+    client.setFlushInterval(FAST_FLUSH);
+    final PutRequest put1 = new PutRequest(table, "css0", family, "q1", "val0");
+    client.put(put1).join();
+    final PutRequest put2 = new PutRequest(table, "css1", family, "q1", "val1");
+    client.put(put2).join();
+
+    // Create forward scanner and scan one row.
+    Scanner scanner = client.newScanner(table);
+    scanner.setStartKey("css0");
+    scanner.setStopKey("css0");
+    ArrayList<ArrayList<KeyValue>> row = scanner.nextRows().join();
+    assertSizeIs(1, row);
+    assertEq("val0", row.get(0).get(0).value());
+
+    // Create reversed scanner and assert that no rows are returned
+    Scanner rev_scanner = client.newScanner(table);
+    rev_scanner.setStartKey("css0");
+    rev_scanner.setStopKey("css0");
+    rev_scanner.setReverse();
+    ArrayList<ArrayList<KeyValue>> rev_row = rev_scanner.nextRows().join();
+    if (rev_row == null){
+      rev_row = new ArrayList<ArrayList<KeyValue>> ();
+    }
+    assertSizeIs(0, rev_row);
+    scanner.close().join();
+    rev_scanner.close().join();
+  }
+
+  /** 
+   * Reverse scan of a table that is only one region and 
+   * scanning without the start key and scanning without the stop key. 
+   */
+  @Test
+  public void reverseScanWithOptionalParams() throws Exception{
+    final String table2 = args[0] + "2";
+    createOrTruncateTable(client, table2, family);
+    client.setFlushInterval(FAST_FLUSH);
+    final PutRequest put1 = new PutRequest(table2, "scop0", family, "q1", "val0");
+    client.put(put1).join();
+    final PutRequest put2 = new PutRequest(table2, "scop1", family, "q1", "val1");
+    client.put(put2).join();
+    final PutRequest put3 = new PutRequest(table2, "scop2", family, "q1", "val2");
+    client.put(put3).join();
+    final PutRequest put4 = new PutRequest(table2, "scop3", family, "q1", "val3");
+    client.put(put4).join();
+
+    Scanner rev_scanner = client.newScanner(table2);
+    rev_scanner.setStartKey("scop1");
+    rev_scanner.setReverse();
+    ArrayList<ArrayList<KeyValue>> rows = rev_scanner.nextRows().join();
+    assertSizeIs(2, rows);
+    assertEq("val1", rows.get(0).get(0).value());
+    assertEq("val0", rows.get(1).get(0).value());
+
+    Scanner rev_scanner_2 = client.newScanner(table2);
+    rev_scanner_2.setReverse();
+    rev_scanner_2.setStopKey("scop1");
+    rows = rev_scanner_2.nextRows().join();
+    assertSizeIs(2, rows);
+    assertEq("val3", rows.get(0).get(0).value());
+    assertEq("val2", rows.get(1).get(0).value());
+    rev_scanner.close().join();
+    rev_scanner_2.close().join();
+  }
+
+  /** Reverse scan across two regions 1) without stop key (scanning to the beginning of the table)
+  * and 2) without start key (scanning from the end of the table).
+  * TODO: @jnfang 2) is failing because Scanner does not know to start at end of table
+  */
+  @Test
+  public void reverseScanWithOptionalParamsAcrossRegions() throws Exception{
+    final String table3 = args[0] + "3";
+    createOrTruncateTable(client, table3, family);
+    client.setFlushInterval(FAST_FLUSH);
+    final PutRequest put1 = new PutRequest(table3, "scop0", family, "q1", "val0");
+    client.put(put1).join();
+    final PutRequest put2 = new PutRequest(table3, "scop1", family, "q1", "val1");
+    client.put(put2).join();
+    final PutRequest put3 = new PutRequest(table3, "scop2", family, "q1", "val2");
+    client.put(put3).join();
+    final PutRequest put4 = new PutRequest(table3, "scop3", family, "q1", "val3");
+    client.put(put4).join();
+
+    splitTable(table3, "scop2");
+    splitTable(table3, "scop3");
+    alterTableStatus(table3);
+
+    ArrayList<ArrayList<KeyValue>> rows = genericScanGetAllAcrossRegions("scop1", null, table3, true);
+    assertSizeIs(2, rows);
+    assertEq("val1", rows.get(0).get(0).value());
+    assertEq("val0", rows.get(1).get(0).value());
+ 
+    rows = genericScanGetAllAcrossRegions(null, "scop1", table3, true);
+    assertSizeIs(2, rows);
+    assertEq("val3", rows.get(0).get(0).value());
+    assertEq("val2", rows.get(1).get(0).value()); 
+  }
+
+  /* Helper function that creates scanner and calls nextRows until the result is null */
+  private ArrayList<ArrayList<KeyValue>> genericScanGetAllAcrossRegions (
+    String start_key, String stop_key, String table, boolean direction) throws Exception{
+    
+    Scanner scanner = client.newScanner(table);
+    if (start_key != null){
+      byte[] start_row = start_key.getBytes();
+      scanner.setStartKey(start_row);
+    }
+    if (stop_key != null){
+      byte[] stop_row = stop_key.getBytes();
+      scanner.setStopKey(stop_key);
+    }
+    if (direction){
+      scanner.setReverse();      
+    }
+
+    ArrayList<ArrayList<KeyValue>> new_row = scanner.nextRows().join();
+    ArrayList<ArrayList<KeyValue>> result = new ArrayList<ArrayList<KeyValue>>();
+    while (new_row != null){
+      result.addAll(new_row);
+      new_row = scanner.nextRows().join();
+    }
+    scanner.close().join();
+    return result;
   }
 
   /** Regression test for issue #2. */
@@ -1354,6 +1602,7 @@ final public class TestIntegration {
       LOG.info('(' + what + ") " + line);
     }
   }
+
 
   private static final class JunitListener extends RunListener {
     @Override
