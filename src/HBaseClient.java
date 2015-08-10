@@ -211,7 +211,7 @@ public final class HBaseClient {
   private static final byte[] ROOT_REGION = new byte[] { '-', 'R', 'O', 'O', 'T', '-', ',', ',', '0' };
   private static final byte[] META = new byte[] { '.', 'M', 'E', 'T', 'A', '.' };
   static final byte[] INFO = new byte[] { 'i', 'n', 'f', 'o' };
-  private static final byte[] REGIONINFO = new byte[] { 'r', 'e', 'g', 'i', 'o', 'n', 'i', 'n', 'f', 'o' };
+  static final byte[] REGIONINFO = new byte[] { 'r', 'e', 'g', 'i', 'o', 'n', 'i', 'n', 'f', 'o' };
   private static final byte[] SERVER = new byte[] { 's', 'e', 'r', 'v', 'e', 'r' };
   /** HBase 0.95 and up: .META. is now hbase:meta */
   private static final byte[] HBASE96_META =
@@ -1038,20 +1038,30 @@ public final class HBaseClient {
    * deferred {@link Scanner.Response} if HBase 0.95 and up.
    */
   Deferred<Object> openScanner(final Scanner scanner) {
-    num_scanners_opened.increment();
-    return sendRpcToRegion(scanner.getOpenRequest()).addCallbacks(
-      scanner_opened,
-      new Callback<Object, Object>() {
-        public Object call(final Object error) {
-          // Don't let the scanner think it's opened on this region.
-          scanner.invalidate();
-          return error;  // Let the error propagate.
-        }
-        public String toString() {
-          return "openScanner errback";
-        }
-      });
+    return openScanner(scanner,scanner.getOpenRequest());
   }
+
+  /**
+   * Overloaded openScanner to enable direct passing in of the HBaseRpc 
+   * @param scanner The scanner to open.
+   * 
+   */
+  Deferred<Object> openScanner(final Scanner scanner, final HBaseRpc open_req){
+    num_scanners_opened.increment();
+    HBaseRpc req = open_req;
+    return sendRpcToRegion(req).addCallbacks(
+          scanner_opened,
+          new Callback<Object, Object>() {
+            public Object call(final Object error) {
+              // Don't let the scanner think it's opened on this region.
+              scanner.invalidate();
+              return error;  // Let the error propagate.
+            }
+            public String toString() {
+              return "openReverseScanner errback";
+            }
+          });
+    }
 
   /** Singleton callback to handle responses of "openScanner" RPCs.  */
   private static final Callback<Object, Object> scanner_opened =
@@ -1798,7 +1808,8 @@ public final class HBaseClient {
   // --------------------------------------------------- //
 
   /**
-   * Locates the region in which the given row key for the given table is.
+   * Locates the region lexicographically before the region the given 
+   * row key for the given table is in.
    * <p>
    * This does a lookup in the .META. / -ROOT- table(s), no cache is used.
    * If you want to use a cache, call {@link #getRegion} instead.
@@ -1807,13 +1818,95 @@ public final class HBaseClient {
    * @return A deferred called back when the lookup completes.  The deferred
    * carries an unspecified result.
    * @see #discoverRegion
+   * TODO: @jnfang refactor to get rid of copied code between locateRegion 
+   * and locateRegionBeforeKey
    */
+  public Deferred<Object> locateRegionBeforeKey(final byte[] table, final byte[] key) {
+    final boolean is_meta = Bytes.equals(table, META);
+    final boolean is_root = !is_meta && Bytes.equals(table, ROOT);
+    // We don't know in which region this row key is.  Let's look it up.
+    // First, see if we already know where to look in .META.
+    // Except, obviously, we don't wanna search in META for META or ROOT.
+
+    final byte[] meta_key = is_root ? null : createPreviousRegionSearchKey(table, key);
+    final byte[] meta_name;
+    final RegionInfo meta_region;
+    if (has_root) {
+      meta_region = is_meta || is_root ? null : getRegion(META, meta_key);
+      meta_name = META;
+    } else {
+      meta_region = META_REGION;
+      meta_name = HBASE96_META;
+    }
+
+    if (meta_region != null) {  // Always true with HBase 0.95 and up.
+      // Lookup in .META. which region server has the region we want.
+      final RegionClient client = (has_root
+                                   ? region2client.get(meta_region) // Pre 0.95
+                                   : rootregion);                  // Post 0.95
+      if (client != null && client.isAlive()) {
+        final boolean has_permit = client.acquireMetaLookupPermit();
+        final Deferred<Object> d =
+          client.getClosestRowBefore(meta_region, meta_name, meta_key, INFO)
+          .addCallback(
+            new Callback<Object, ArrayList<KeyValue>> () {
+              public ArrayList<KeyValue> call(final ArrayList<KeyValue> arg) {
+                if (arg == null) {  // No result.
+                  return new ArrayList<KeyValue>(0);
+                } else {
+                  return arg;
+                } 
+              }}
+            );
+        if (has_permit) {
+          final class ReleaseMetaLookupPermit implements Callback<Object, Object> {
+            public Object call(final Object arg) {
+              client.releaseMetaLookupPermit();
+              return arg;
+            }
+            public String toString() {
+              return "release .META. lookup permit";
+            }
+          };
+          d.addBoth(new ReleaseMetaLookupPermit());
+          meta_lookups_with_permit.increment();
+        } else {
+          meta_lookups_wo_permit.increment();
+        }
+        // This errback needs to run *after* the callback above.
+        return d.addErrback(newLocateRegionErrback(table, key));
+      }
+    }
+
+    // Make a local copy to avoid race conditions where we test the reference
+    // to be non-null but then it becomes null before the next statement.
+    final RegionClient rootregion = this.rootregion;
+    if (rootregion == null || !rootregion.isAlive()) {
+      return zkclient.getDeferredRoot();
+    } else if (is_root) {  // Don't search ROOT in ROOT.
+      return Deferred.fromResult(null);  // We already got ROOT (w00t).
+    }
+    // The rest of this function is only executed with HBase 0.94 and before.
+
+    // Alright so we don't even know where to look in .META.
+    // Let's lookup the right .META. entry in -ROOT-.
+    final byte[] root_key = createRegionSearchKey(META, meta_key);
+    final RegionInfo root_region = new RegionInfo(ROOT, ROOT_REGION,
+                                                  EMPTY_ARRAY);
+    root_lookups.increment();
+    return rootregion.getClosestRowBefore(root_region, ROOT, root_key, INFO)
+      .addCallback(root_lookup_done)
+      // This errback needs to run *after* the callback above.
+      .addErrback(newLocateRegionErrback(table, key));
+  }
+
   private Deferred<Object> locateRegion(final byte[] table, final byte[] key) {
     final boolean is_meta = Bytes.equals(table, META);
     final boolean is_root = !is_meta && Bytes.equals(table, ROOT);
     // We don't know in which region this row key is.  Let's look it up.
     // First, see if we already know where to look in .META.
     // Except, obviously, we don't wanna search in META for META or ROOT.
+
     final byte[] meta_key = is_root ? null : createRegionSearchKey(table, key);
     final byte[] meta_name;
     final RegionInfo meta_region;
@@ -1960,6 +2053,19 @@ public final class HBaseClient {
     // entry with the greatest timestamp, so by looking right before ':'
     // we'll find it.
     meta_key[meta_key.length - 1] = ':';
+    return meta_key;
+  }
+
+  /**
+  * Creates the META key to search for to locate the given key 
+  * with smallest timestamp (as opposed to largest in {@link #createRegionSearchKey}).
+  * @param table The table the row belongs to.
+  * @param key The key to search for in META.
+  */
+  private static byte[] createPreviousRegionSearchKey(final byte[] table,
+                                                      final byte[] key){
+    final byte[] meta_key = createRegionSearchKey(table, key);
+    meta_key[meta_key.length - 1] = '/';
     return meta_key;
   }
 
@@ -2232,7 +2338,7 @@ public final class HBaseClient {
    * Returns true if this region is known to be NSRE'd and shouldn't be used.
    * @see #handleNSRE
    */
-  private static boolean knownToBeNSREd(final RegionInfo region) {
+  public static boolean knownToBeNSREd(final RegionInfo region) {
     return region.table() == EMPTY_ARRAY;
   }
 
