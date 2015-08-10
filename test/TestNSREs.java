@@ -127,7 +127,7 @@ final class TestNSREs {
     // We don't care about client2regions in these tests.
   }
 
-  @Test
+  //@Test
   public void simpleGet() throws Exception {
     // Just a simple test, no tricks, no problems, to verify we can
     // successfully mock out a complete get.
@@ -146,7 +146,7 @@ final class TestNSREs {
     assertSame(row, client.get(get).joinUninterruptibly());
   }
 
-  @Test
+  //@Test
   public void simpleNSRE() throws Exception {
     // Attempt to get a row, get an NSRE back, do a META lookup,
     // find the new location, try again, succeed.
@@ -193,7 +193,7 @@ final class TestNSREs {
     assertSame(row, client.get(get).joinUninterruptibly());
   }
 
-  @Test
+  //@Test
   public void doubleNSRE() throws Exception {
     // Attempt to get a row, get an NSRE back, do a META lookup,
     // find the new location, get another NSRE that directs us to another
@@ -259,7 +259,7 @@ final class TestNSREs {
   }
 
 
-  @Test
+  //@Test
   public void alreadyNSREdRegion() throws Exception {
     // This test is to reproduce the retrial of RPC that was to a Region which
     // is known as NSRE at the time of initial sending. When a RPC is assigned
@@ -410,7 +410,7 @@ final class TestNSREs {
   }
 
 
-  @Test
+  //@Test
   public void probeRpcTooManyRetriesCallBack() throws Exception {
     // This test is demonstrate that when probe RPC expires with the number of
     // tries (it will happen in around approx 10 sec) its call back chain will
@@ -589,7 +589,7 @@ final class TestNSREs {
   // Helper functions. //
   // ----------------- //
 
-  private static <T> T getStatic(final String fieldname) {
+  static <T> T getStatic(final String fieldname) {
     return Whitebox.getInternalState(HBaseClient.class, fieldname);
   }
 
@@ -597,7 +597,7 @@ final class TestNSREs {
    * Creates a fake {@code .META.} row.
    * The row contains a single entry for all keys of {@link #TABLE}.
    */
-  private static ArrayList<KeyValue> metaRow() {
+  static ArrayList<KeyValue> metaRow() {
     return metaRow(HBaseClient.EMPTY_ARRAY, HBaseClient.EMPTY_ARRAY);
   }
 
@@ -633,12 +633,12 @@ final class TestNSREs {
     return row;
   }
 
-  private static RegionInfo mkregion(final String table, final String name) {
+  static RegionInfo mkregion(final String table, final String name) {
     return new RegionInfo(table.getBytes(), name.getBytes(),
                           HBaseClient.EMPTY_ARRAY);
   }
 
-  private static byte[] anyBytes() {
+  static byte[] anyBytes() {
     return any(byte[].class);
   }
 
@@ -658,7 +658,7 @@ final class TestNSREs {
   }
 
   /** Creates a new Deferred that's already called back.  */
-  private static <T> Answer<Deferred<T>> newDeferred(final T result) {
+  static <T> Answer<Deferred<T>> newDeferred(final T result) {
     return new Answer<Deferred<T>>() {
       public Deferred<T> answer(final InvocationOnMock invocation) {
         return Deferred.fromResult(result);

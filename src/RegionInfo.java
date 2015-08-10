@@ -262,16 +262,18 @@ final class RegionInfo implements Comparable<RegionInfo> {
     }
 
     // If reached the end and the string being returned is not empty
-    if (key_end == region_name.length &&  (comma ==2)) {
+    if (key_end == region_name.length &&  (comma == 2)) {
       throw new IllegalArgumentException("Malformed region name, not enough"
               + " commas: " + Bytes.pretty(region_name));
     }
 
     // Only return the string if region length is greater than 0
-    if (key_end - key_begin > 0 && region_name.length >0){
+    if (key_end - key_begin > 0 && region_name.length > 0){
       return Arrays.copyOfRange(region_name, key_begin, key_end);
     }
-    else{
+    // Otherwise, return an empty string as start key aka this is the 
+    // start key for the first region in the table.
+    else {
       return Arrays.copyOfRange(region_name, key_begin, key_begin);
     }
 

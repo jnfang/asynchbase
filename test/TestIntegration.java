@@ -1059,6 +1059,30 @@ final public class TestIntegration {
     rev_scanner.close().join();
   }
 
+
+  /** Reverse scans single row and verifies that columns are turned in forward lexico order*/
+  @Test
+  public void intraOneRowReverseScan() throws Exception{
+    client.setFlushInterval(FAST_FLUSH);
+    final PutRequest put1 = new PutRequest(table, "intrar1", family, "q0", "val0");
+    client.put(put1).join();
+    final PutRequest put2 = new PutRequest(table, "intrar1", family, "q1", "val1");
+    client.put(put2).join();
+    final PutRequest put3 = new PutRequest(table, "intrar2", family, "q1", "val2");
+    client.put(put3).join();
+
+    Scanner scan = client.newScanner(table);
+    scan.setStartKey("intrar1");
+    scan.setStopKey("intrar0");
+    scan.setReverse();
+
+    ArrayList<ArrayList<KeyValue>> rows = scan.nextRows().join();
+    assertSizeIs(1, rows);
+    assertEq("val0", rows.get(0).get(0).value());
+    assertEq("val1", rows.get(0).get(1).value());
+
+  }
+
   /** Compares simple forward scan with reverse scan.  */
   @Test
   public void reverseScanForwardScanComparison() throws Exception {
@@ -1372,7 +1396,6 @@ final public class TestIntegration {
 
   /** Reverse scan across two regions 1) without stop key (scanning to the beginning of the table)
   * and 2) without start key (scanning from the end of the table).
-  * TODO: @jnfang 2) is failing because Scanner does not know to start at end of table
   */
   @Test
   public void reverseScanWithOptionalParamsAcrossRegions() throws Exception{
@@ -1428,6 +1451,81 @@ final public class TestIntegration {
     }
     scanner.close().join();
     return result;
+  }
+
+  /** Shows reversed scanner also returns full rows even though max_bytes may be set. */
+  @Test
+  public void reverseScanMoreThanMaxBytes() throws Exception {
+    client.setFlushInterval(FAST_FLUSH);
+    String long_val = "long_str"; // 8 bytes + 1 digit gets added on input
+    final PutRequest put1 = new PutRequest(table, "rsmb1", family, "q0", long_val+"0");
+    client.put(put1).join();
+    final PutRequest put2 = new PutRequest(table, "rsmb1", family, "q1", long_val+"1");
+    client.put(put2).join();
+    final PutRequest put3 = new PutRequest(table, "rsmb1", family, "q2", long_val+"2");
+    client.put(put3).join();
+    final PutRequest put4 = new PutRequest(table, "rsmb2", family, "q3", long_val+"3");
+    client.put(put4).join();
+    final PutRequest put5 = new PutRequest(table, "rsmb2", family, "q4", long_val+"4");
+    client.put(put5).join();
+
+    Scanner scanner = client.newScanner(table);
+    scanner.setReverse();
+    scanner.setMaxNumBytes(250); // 250 bytes limit
+    scanner.setStartKey("rsmb2");
+    scanner.setStopKey("rsmb0");
+
+    // KeyValue size: key is 5 bytes + family: 1 + qualifier: 2 + value:9 + timestamp: 8 = 25 bytes
+    // JVM adds around 40 bytes for each object so total is around 65 bytes
+    ArrayList<ArrayList<KeyValue>> rows = scanner.nextRows().join();
+    assertSizeIs(2, rows); 
+    // Even though 5 KVs is more than 250 bytes, we verify that HBase does not
+    // truncate rows in the middle
+    assertEq(long_val+"3", rows.get(0).get(0).value());
+    assertEq(long_val+"4", rows.get(0).get(1).value());
+    assertEq(long_val+"0", rows.get(1).get(0).value());
+    assertEq(long_val+"1", rows.get(1).get(1).value());
+    assertEq(long_val+"2", rows.get(1).get(2).value());
+
+  }
+
+  /** 
+   * Set a max number of key values to be returned and verify that a reversed scanner 
+   * conforms to max kvs limit just like the forward scanner */
+  @Test
+  public void reverseAndForwardScanMoreThanMaxKVs() throws Exception{
+    client.setFlushInterval(FAST_FLUSH);
+    final PutRequest put1 = new PutRequest(table, "rsmk0", family, "q", "val0");
+    client.put(put1).join();
+    final PutRequest put2 = new PutRequest(table, "rsmk0", family, "q1", "val1");
+    client.put(put2).join();
+    final PutRequest put3 = new PutRequest(table, "rsmk0", family, "q2", "val2");
+    client.put(put3).join();
+    final PutRequest put4 = new PutRequest(table, "rsmk3", family, "q", "val3");
+    client.put(put4).join();
+
+    Scanner rev_scanner = client.newScanner(table);
+    rev_scanner.setReverse();
+    rev_scanner.setMaxNumKeyValues(2); // Sets the max number of KVs returned per row
+    rev_scanner.setStartKey("rsmk3");
+
+    ArrayList<ArrayList<KeyValue>> rows = rev_scanner.nextRows().join();
+    assertSizeIs(3, rows);
+    assertEq("val3", rows.get(0).get(0).value());
+    assertEq("val0", rows.get(1).get(0).value()); // Reversed scanner still returns columns in forward order
+    assertEq("val1", rows.get(1).get(1).value());
+    assertEq("val2", rows.get(2).get(0).value());
+
+    Scanner for_scanner = client.newScanner(table);
+    for_scanner.setMaxNumKeyValues(2);
+    for_scanner.setStartKey("rsmk0");
+    rows = for_scanner.nextRows().join();
+    assertSizeIs(3, rows);
+    assertEq("val0", rows.get(0).get(0).value());
+    assertEq("val1", rows.get(0).get(1).value());
+    assertEq("val2", rows.get(1).get(0).value());
+    assertEq("val3", rows.get(2).get(0).value());
+
   }
 
   /** Regression test for issue #2. */
